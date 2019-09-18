@@ -1,6 +1,8 @@
 import math
 import operator
 import numpy
+import pylab as pl
+import sys
 
 
 def transfomData(lines):
@@ -13,11 +15,11 @@ def transfomData(lines):
     return transfLines
 
 
-def loadDatasets(trainFile, testFile):
+def loadDatasets(trainFile, testFile, train_size, test_size):
     with open(trainFile, 'r') as f1:
-        trainingSet = transfomData(f1.readlines()[:1000])
+        trainingSet = transfomData(f1.readlines()[:train_size])
     with open(testFile, 'r') as f2:
-        testSet = transfomData(f2.readlines()[:1000])
+        testSet = transfomData(f2.readlines()[:test_size])
     return [trainingSet, testSet]
 
 
@@ -56,32 +58,49 @@ def getResponse(neighbors):
 
 def getAccuracy(testSet, predictions):
     correct = 0
+    plot = numpy.full((10, 10), 0)
     for x in range(len(testSet)):
+        plot[int(testSet[x][-1])][int(predictions[x])] += 1
         if testSet[x][-1] == predictions[x]:
             correct += 1
-    return (correct/float(len(testSet))) * 100.0
+    return [(correct/float(len(testSet))) * 100.0, plot]
 
 
-def main():
+def main(k, train_size, test_size):
     # prepare data
     print('Loading datasets...')
-    sets = loadDatasets('train.dat', 'test.dat')
+    sets = loadDatasets('train.dat', 'test.dat', train_size, test_size)
     trainingSet = sets[0]
     testSet = sets[1]
     print('Training model with ' + repr(len(trainingSet)))
     print('Testing model with ' + repr(len(testSet)))
     # generate predictions
     predictions = []
-    k = 3
     print('Making predictions...')
     for x in range(len(testSet)):
         neighbors = getNeighbors(trainingSet, testSet[x], k)
         result = getResponse(neighbors)
         predictions.append(result)
         # print(repr(x))
-    accuracy = getAccuracy(testSet, predictions)
+    [accuracy, plot] = getAccuracy(testSet, predictions)
     print('Accuracy: ' + repr(accuracy) + '%')
+    # cria a matriz de confusao
+    print(plot)
+    pl.matshow(plot)
+    pl.colorbar()
+    pl.show()
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) != 4:
+        sys.exit("Use: knn.py <k> <train_size> <test_size> (maximum 10,000 for both)")
+
+    k = int(sys.argv[1])
+    train_size = int(sys.argv[2])
+    test_size = int(sys.argv[3])
+    if train_size > 10000 or test_size > 10000:
+        sys.exit("Maximum size allowed is 10,000 for both")
+    if k % 2 == 0:
+        sys.exit("k must be odd")
+
+    main(k, train_size, test_size)
